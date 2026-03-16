@@ -182,7 +182,7 @@ def scrape_product_page(url):
     if not html:
         return None
     
-    soup = BeautifulSoup(html, 'lxml')
+    soup = BeautifulSoup(html, 'html.parser')
     
     product_data = {
         'url': url,
