@@ -15,13 +15,6 @@ import time
 import warnings
 import urllib3
 from urllib.parse import urljoin, urlparse
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 # Suppress SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -44,9 +37,8 @@ HEADERS = {
     'sec-ch-ua-platform': '"Windows"',
 }
 
-# Global session and driver
+# Global session
 _session = None
-_driver = None
 
 def get_session():
     """Get or create requests Session"""
@@ -55,33 +47,6 @@ def get_session():
         _session = requests.Session()
         _session.headers.update(HEADERS)
     return _session
-
-def get_driver():
-    """Get or create Selenium WebDriver"""
-    global _driver
-    if _driver is None:
-        chrome_options = Options()
-        chrome_options.add_argument('--headless=new')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-        chrome_options.add_argument(f'user-agent={HEADERS["User-Agent"]}')
-        chrome_options.add_argument('--window-size=1920,1080')
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
-        
-        service = Service(ChromeDriverManager().install())
-        _driver = webdriver.Chrome(service=service, options=chrome_options)
-        _driver.execute_cdp_cmd('Network.setUserAgentOverride', {"userAgent": HEADERS['User-Agent']})
-    return _driver
-
-def close_driver():
-    """Close the WebDriver"""
-    global _driver
-    if _driver:
-        _driver.quit()
-        _driver = None
 
 def get_page(url, retries=3):
     """Fetch a page with retries - tries requests first, then Selenium"""
@@ -104,39 +69,6 @@ def get_page(url, retries=3):
             global _session
             _session = None
     
-    # Fall back to Selenium for JavaScript-rendered content
-    print(f"Using Selenium for {url}")
-    return get_page_selenium(url, retries)
-
-def get_page_selenium(url, retries=3):
-    """Fetch a page using Selenium for JavaScript content"""
-    for attempt in range(retries):
-        try:
-            driver = get_driver()
-            driver.get(url)
-            
-            # Wait for page to load
-            time.sleep(3)
-            
-            # Try to wait for product content
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.TAG_NAME, "body"))
-                )
-            except:
-                pass
-            
-            # Scroll to load lazy images
-            driver.execute_script("window.scrollTo(0, 500);")
-            time.sleep(1)
-            driver.execute_script("window.scrollTo(0, 1000);")
-            time.sleep(1)
-            
-            return driver.page_source
-        except Exception as e:
-            print(f"Selenium attempt {attempt + 1} failed for {url}: {e}")
-            if attempt < retries - 1:
-                time.sleep(2)
     return None
 
 def parse_price(price_text):
