@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gutteridge Price Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">🏷️</div>
+                <div class="logo-text">
+                    <h1>Gutteridge Price Tracker</h1>
+                    <p>Monitora i prezzi dei tuoi prodotti preferiti</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="stats-bar">
+                    <div class="stat-card">
+                        <span class="stat-value" id="totalProducts">0</span>
+                        <span class="stat-label">Prodotti</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="totalRecords">0</span>
+                        <span class="stat-label">Rilevamenti</span>
+                    </div>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" title="Cambia tema">🌓</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Add Product Section -->
+            <section class="add-product-section">
+                <h2 class="section-title"><span>➕</span> Aggiungi Prodotto</h2>
+                <div class="add-product-form">
+                    <div class="input-wrapper">
+                        <input type="text" id="productUrl" placeholder="Incolla l'URL del prodotto Gutteridge..." />
+                    </div>
+                    <button id="addProductBtn" class="btn btn-primary" onclick="addProduct()">
+                        Aggiungi
+                    </button>
+                </div>
+                <div id="addMessage" class="message"></div>
+            </section>
+
+            <!-- Products Section -->
+            <section class="products-section">
+                <div class="section-header">
+                    <h2 class="section-title"><span>📦</span> I Miei Prodotti</h2>
+                    <div class="section-actions">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="Cerca prodotti..."
+                                oninput="searchProducts()" />
+                        </div>
+                        <div class="sort-box">
+                            <select id="sortSelect" onchange="sortProducts()">
+                                <option value="updated_at-desc">Più recenti</option>
+                                <option value="updated_at-asc">Meno recenti</option>
+                                <option value="current_price-asc">Prezzo: crescente</option>
+                                <option value="current_price-desc">Prezzo: decrescente</option>
+                                <option value="name-asc">Nome: A-Z</option>
+                                <option value="name-desc">Nome: Z-A</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="exportAllCSV()" title="Esporta tutto in CSV">
+                            📥 CSV
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="refreshAllProducts()">
+                            🔄 Aggiorna Tutti
+                        </button>
+                    </div>
+                </div>
+                <div id="productsGrid" class="products-grid">
+                    <!-- Products will be loaded here -->
+                </div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📦</div>
+                    <h3>Nessun prodotto tracciato</h3>
+                    <p>Aggiungi un prodotto incollando l'URL dalla pagina Gutteridge</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div class="modal-body">
+                <div class="modal-left">
+                    <div class="product-image-container">
+                        <img id="modalImage" src="" alt="Product Image" />
+                    </div>
+                    <div class="product-gallery" id="productGallery"></div>
+                </div>
+                <div class="modal-right">
+                    <h2 id="modalName"></h2>
+                    <p class="product-category" id="modalCategory"></p>
+
+                    <div class="price-info">
+                        <div class="price-row">
+                            <span class="price-label">Prezzo Attuale</span>
+                            <span class="price-value" id="modalCurrentPrice"></span>
+                        </div>
+                        <div class="price-row" id="originalPriceContainer" style="display: none;">
+                            <span class="price-label">Prezzo Originale</span>
+                            <span class="price-value original" id="modalOriginalPrice"></span>
+                        </div>
+                        <div id="discountBadge" style="display: none;">
+                            <span class="discount-badge" id="discountPercent"></span>
+                        </div>
+                    </div>
+
+                    <div class="price-stats">
+                        <div class="stat-box">
+                            <div class="stat-box-label">Prezzo Minimo</div>
+                            <div class="stat-box-value" id="minPrice">-</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-box-label">Prezzo Massimo</div>
+                            <div class="stat-box-value" id="maxPrice">-</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-box-label">Prezzo Medio</div>
+                            <div class="stat-box-value" id="avgPrice">-</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button class="btn btn-primary btn-sm" onclick="refreshProduct()">
+                            🔄 Aggiorna
+                        </button>
+                        <a id="modalLink" href="" target="_blank" class="btn btn-secondary btn-sm">
+                            🔗 Vedi su Gutteridge
+                        </a>
+                        <button class="btn btn-warning btn-sm" onclick="showAlertModal()">
+                            🔔 Alert
+                        </button>
+                        <button class="btn btn-info btn-sm" onclick="exportProductCSV()">
+                            📥 CSV
+                        </button>
+                        <button class="btn btn-info btn-sm" onclick="exportProductJSON()">
+                            📋 JSON
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProduct()">
+                            🗑️ Elimina
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Chart -->
+            <div class="chart-section">
+                <h3>📈 Andamento Prezzo</h3>
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div id="alertModal" class="modal">
+        <div class="modal-content modal-small">
+            <button class="modal-close" onclick="closeAlertModal()">×</button>
+            <div style="padding: 32px;">
+                <h2 style="margin-bottom: 8px;">🔔 Imposta Alert Prezzo</h2>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Ricevi una notifica quando il prezzo scende
+                    sotto il tuo target</p>
+                <div class="alert-form">
+                    <label>Prezzo Target (€)</label>
+                    <input type="number" id="alertTargetPrice" step="0.01" placeholder="es. 199.00" />
+                    <button class="btn btn-primary" onclick="createAlert()" style="width: 100%;">
+                        ✅ Crea Alert
+                    </button>
+                </div>
+                <div id="alertMessage" class="message"></div>
+
+                <h3 style="margin-top: 24px; margin-bottom: 16px; font-size: 1rem;">Alert Attivi</h3>
+                <div id="alertsList" class="alerts-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
